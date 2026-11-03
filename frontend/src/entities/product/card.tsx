@@ -39,7 +39,7 @@ export function ProductCard({
             <h2>{product.name}</h2>
           </Link>
           <div className="product-bottom">
-            <strong>{money(product.price)}</strong>
+            <strong>{product.price > 0 ? money(product.price) : "Цена уточняется"}</strong>
             <span
               className={
                 product.stock ? "stock-label" : "stock-label unavailable"

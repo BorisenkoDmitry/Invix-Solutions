@@ -79,7 +79,11 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-shop}:${POSTGRES_PASSWORD:-local-postgres-change-me}@postgres:5432/${POSTGRES_DB:-shop}
       BOT_TOKEN: ${BOT_TOKEN:-}
-      BOT_WEBHOOK_SECRET: ${BOT_WEBHOOK_SECRET:-local-webhook-change-me}
+      BOT_ADMIN_IDS: ${BOT_ADMIN_IDS:-}
+      MINI_APP_URL: ${MINI_APP_URL:-}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-local-admin-change-me}
+      API_URL: http://backend:8000
+      BOT_WEBHOOK_SECRET: ${BOT_WEBHOOK_SECRET:-}
       BOT_WEBHOOK_URL: ${BOT_WEBHOOK_URL:-}
       SHOP_URL: ${SHOP_URL:-http://localhost:8088}
     read_only: true

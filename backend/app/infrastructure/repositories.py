@@ -1,7 +1,7 @@
 import hashlib
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -36,6 +36,30 @@ def order_dict(o: Order) -> dict:
 class ShopRepository:
     def __init__(self, session: Session):
         self.session = session
+
+    def lock_product(self, product_id: UUID) -> None:
+        self.session.execute(
+            text("SELECT pg_advisory_xact_lock(:key)"),
+            {"key": int.from_bytes(product_id.bytes[:8], signed=True)},
+        )
+
+    def find_product(self, product_id: UUID) -> dict | None:
+        product = self.session.get(Product, product_id)
+        return product_dict(product) if product else None
+
+    def create_product(self, product_id: UUID, name: str, image_key: str) -> dict:
+        product = Product(
+            id=product_id,
+            name=name,
+            description="",
+            category="Каталог",
+            price=0,
+            stock=0,
+            image_key=image_key,
+        )
+        self.session.add(product)
+        self.session.flush()
+        return product_dict(product)
 
     def products(self) -> list[dict]:
         return [
@@ -87,6 +111,8 @@ class ShopRepository:
         product = self.session.get(Product, product_id)
         if not product:
             raise NotFoundError("Товар не найден")
+        if quantity > 0 and product.price <= 0:
+            raise ShopError("Цена товара ещё не указана")
         if quantity > product.stock:
             raise ShopError("Недостаточно товара на складе")
         if quantity == 0:

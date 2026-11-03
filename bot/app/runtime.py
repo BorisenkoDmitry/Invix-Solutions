@@ -13,6 +13,7 @@ settings = Settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    settings.admin_ids
     pool = AsyncConnectionPool(settings.database_url, min_size=1, max_size=5, open=False)
     await pool.open(wait=True)
     bot = Bot(settings.bot_token) if settings.bot_token else None

@@ -22,7 +22,7 @@ export function AddButton({ product }: { product: Product }) {
       className="product-action"
       busy={pendingProductId === product.id || loading}
       busyLabel={pendingProductId === product.id ? "Добавляем…" : "Загружаем…"}
-      disabled={busy || !cart || product.stock === 0}
+      disabled={busy || !cart || product.stock === 0 || product.price === 0}
       onClick={() => {
         void setQuantity(product.id, 1).catch(() => {});
       }}

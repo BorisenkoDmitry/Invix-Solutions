@@ -25,7 +25,7 @@ export function ProductView({ product: p }: { product: Product }) {
           <p className="product-category">{p.category}</p>
           <h1>{p.name}</h1>
           <p className="description">{p.description}</p>
-          <p className="price">{money(p.price)}</p>
+          <p className="price">{p.price > 0 ? money(p.price) : "Цена уточняется"}</p>
           <p className="stock-label">
             <PackageCheck size={17} aria-hidden="true" />
             {p.stock ? `В наличии: ${p.stock} шт.` : "Нет в наличии"}

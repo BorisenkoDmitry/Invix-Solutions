@@ -200,3 +200,57 @@ def test_admin_image_roundtrip_without_disk(database):
         http_app.app.dependency_overrides.pop(get_session, None)
         if key:
             storage().remove_object(settings().minio_bucket, key)
+
+
+@pytest.mark.skipif(not os.getenv("TEST_MINIO"), reason="TEST_MINIO not configured")
+def test_create_catalog_product_is_authorized_durable_and_idempotent(database):
+    factory, _, _ = database
+    product_id = uuid4()
+    data = b"\xff\xd8\xfftest-photo"
+    key = None
+
+    def test_session():
+        with factory.begin() as session:
+            yield session
+
+    http_app.app.dependency_overrides[get_session] = test_session
+    try:
+        with TestClient(http_app.app) as client:
+            path = f"/v1/admin/products/{product_id}"
+            headers = {"Content-Type": "image/jpeg", "X-Admin-Key": settings().admin_api_key}
+            assert client.put(path, params={"name": "Тест"}, content=data).status_code == 403
+            assert client.put(path, params={"name": " "}, content=data, headers=headers).status_code == 422
+            assert (
+                client.put(path, params={"name": "Тест"}, content=b"bad", headers=headers).status_code == 415
+            )
+            assert (
+                client.put(
+                    path, params={"name": "Тест"}, content=b"x" * (5 * 1024 * 1024 + 1), headers=headers
+                ).status_code
+                == 413
+            )
+
+            def create(_):
+                return client.put(path, params={"name": "Тест"}, content=data, headers=headers)
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                responses = list(pool.map(create, range(2)))
+            assert [response.status_code for response in responses] == [201, 201]
+            assert responses[0].json() == responses[1].json()
+            product = responses[0].json()
+            key = product["image_url"].rsplit("/", 1)[1]
+            assert product["price"] == 0
+            assert product["stock"] == 0
+            assert client.get(f"/v1/products/{product_id}").json()["name"] == "Тест"
+            assert client.get(f"/v1/media/{key}").content == data
+            assert (
+                client.put(path, params={"name": "Другой"}, content=data, headers=headers).status_code == 409
+            )
+        with factory() as db:
+            assert db.get(Product, product_id).image_key == key
+    finally:
+        http_app.app.dependency_overrides.pop(get_session, None)
+        with factory.begin() as db:
+            db.execute(delete(Product).where(Product.id == product_id))
+        if key:
+            storage().remove_object(settings().minio_bucket, key)

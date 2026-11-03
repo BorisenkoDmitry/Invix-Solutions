@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CartProvider } from "@/features/cart/model";
 import { Header } from "@/widgets/header";
+import { TelegramBridge } from "@/shared/ui/telegram-bridge";
 import "@fontsource-variable/manrope";
 import "@/shared/ui/theme.css";
 import "./styles.css";
@@ -14,6 +15,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru">
       <body>
+        <TelegramBridge />
         <a href="#main" className="skip">
           К содержимому
         </a>
