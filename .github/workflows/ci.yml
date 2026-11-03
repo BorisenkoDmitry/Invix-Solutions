@@ -1,0 +1,51 @@
+name: checks
+on: [push, pull_request]
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+  backend-and-bot:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_USER: shop
+          POSTGRES_PASSWORD: shop
+          POSTGRES_DB: shop
+        ports: ["5432:5432"]
+        options: --health-cmd="pg_isready -U shop" --health-interval=5s --health-timeout=5s --health-retries=10
+    env:
+      DATABASE_URL: postgresql+psycopg://shop:shop@localhost:5432/shop
+      TEST_DATABASE_URL: postgresql+psycopg://shop:shop@localhost:5432/shop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.8"
+          python-version: "3.12"
+      - run: uv sync --frozen
+        working-directory: backend
+      - run: uv run python -m app.migrate
+        working-directory: backend
+      - run: uv run pytest
+        working-directory: backend
+      - run: uv sync --frozen
+        working-directory: bot
+      - run: uv run pytest
+        working-directory: bot
+        env:
+          DATABASE_URL: postgresql://shop:shop@localhost:5432/shop
+          RUN_DB_TESTS: "1"

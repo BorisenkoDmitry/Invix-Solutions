@@ -1,0 +1,43 @@
+// End-to-end API/BFF smoke check. Creates one test order and consumes one demo unit.
+import assert from "node:assert/strict";
+import {randomUUID} from "node:crypto";
+const base = process.env.SHOP_URL || "http://localhost:8088";
+const origin = new URL(base).origin;
+const products = await fetch(`${base}/v1/products`).then(r => r.json());
+assert.ok(products.length);
+const product = products.find(p => p.stock > 0);
+assert.ok(product, "Need a product in stock");
+const session = await fetch(`${base}/api/cart`);
+assert.equal(session.status, 200);
+const cookie = session.headers.get("set-cookie")?.split(";")[0];
+assert.ok(cookie?.startsWith("shop_session="));
+assert.ok(session.headers.get("set-cookie").includes("HttpOnly"));
+const headers = {Cookie: cookie, Origin: origin, "Content-Type": "application/json"};
+const add = await fetch(`${base}/api/cart/items/${product.id}`, {method:"PUT", headers, body:JSON.stringify({quantity:1})});
+assert.equal(add.status, 200, await add.text());
+for (let i = 0; i < 8; i++) {
+  const cart = await fetch(`${base}/api/cart`, {headers: {Cookie: cookie}}).then(r=>r.json());
+  assert.equal(cart.items[0].quantity, 1, "Cart must survive load balancing");
+}
+const invalid = await fetch(`${base}/api/cart/items/${product.id}`, {method:"PUT", headers:{...headers,Origin:"https://evil.example"}, body:'{"quantity":0}'});
+assert.equal(invalid.status, 403);
+const body = JSON.stringify({name:"Тестовый покупатель", phone:"+79990000000", address:"Тестовый адрес, 1"});
+const key = randomUUID();
+const responses = await Promise.all([1,2].map(()=>fetch(`${base}/api/orders`, {method:"POST", headers:{...headers,"Idempotency-Key":key},body})));
+for (const response of responses) assert.equal(response.status, 201);
+const orders = await Promise.all(responses.map(r=>r.json()));
+assert.equal(orders[0].id,orders[1].id);
+assert.equal(orders[0].total,product.price);
+assert.equal((await fetch(`${base}/api/cart`,{headers:{Cookie:cookie}}).then(r=>r.json())).items.length,0);
+assert.equal((await fetch(`${base}/api/orders/${orders[0].id}`,{headers:{Cookie:cookie}})).status,200);
+assert.equal((await fetch(`${base}/api/orders/${orders[0].id}`)).status,404);
+const history = await fetch(`${base}/api/orders?limit=1&offset=0`, {headers:{Cookie:cookie}}).then(r => r.json());
+assert.equal(history.items.length,1);
+assert.equal(history.items[0].id,orders[0].id);
+assert.equal(history.has_more,false);
+assert.equal("customer" in history.items[0],false);
+assert.equal((await fetch(`${base}/api/orders?limit=0`, {headers:{Cookie:cookie}})).status,422);
+assert.deepEqual(await fetch(`${base}/api/orders`).then(r => r.json()), {items:[],has_more:false});
+const media = await fetch(`${base}${product.image_url}`);
+assert.equal(media.status,200);
+console.log(`Smoke passed: catalog, MinIO, shared cart, CSRF, concurrent idempotency, checkout, order history and isolation. Order: ${orders[0].id}`);

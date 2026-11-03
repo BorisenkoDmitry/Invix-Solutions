@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+*.tar
+*.tar.gz
+*.bundle
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+node_modules/
+.next/
+*.tsbuildinfo
+playwright-report/
+test-results/
