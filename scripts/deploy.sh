@@ -12,6 +12,6 @@ fi
 docker compose -p invix-solutions --env-file "$env_file" config --quiet
 docker compose -p invix-solutions --env-file "$env_file" build
 docker compose -p invix-solutions --env-file "$env_file" up -d \
-  --scale backend=2 --scale frontend=2 --scale bot=2 \
+  --scale backend=2 --scale frontend=2 \
   --wait --wait-timeout 180
 docker compose -p invix-solutions --env-file "$env_file" ps
