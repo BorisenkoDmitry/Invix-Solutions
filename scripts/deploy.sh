@@ -14,4 +14,6 @@ docker compose -p invix-solutions --env-file "$env_file" build
 docker compose -p invix-solutions --env-file "$env_file" up -d \
   --scale backend=2 --scale frontend=2 \
   --wait --wait-timeout 180
+docker compose -p invix-solutions --env-file "$env_file" up -d \
+  --no-deps --force-recreate gateway
 docker compose -p invix-solutions --env-file "$env_file" ps
