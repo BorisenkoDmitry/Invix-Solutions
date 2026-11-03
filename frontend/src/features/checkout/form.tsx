@@ -11,6 +11,7 @@ import { Card } from "@/shared/ui/card";
 import { Alert, AlertDescription } from "@/shared/ui/alert";
 import { PhoneInput } from "@/shared/ui/phone-input";
 import { BusyButton } from "@/shared/ui/busy-button";
+import { createUUID } from "@/shared/lib/uuid";
 import {
   customerFields,
   emptyCustomer,
@@ -100,7 +101,7 @@ export function CheckoutForm({
       const key =
         saved?.payload === payload && typeof saved.key === "string"
           ? saved.key
-          : crypto.randomUUID();
+          : createUUID();
       attemptRef.current = { key, payload };
       try {
         sessionStorage.setItem(
@@ -136,7 +137,7 @@ export function CheckoutForm({
         setFormError(
           error instanceof ApiError
             ? error.message
-            : "Нет связи с магазином. Проверьте подключение и попробуйте ещё раз.",
+            : "Не удалось оформить заказ. Попробуйте ещё раз.",
         );
       setSubmitting(false);
       inFlight.current = false;
